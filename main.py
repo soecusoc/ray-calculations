@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import Tkinter as tk
+import tkinter as tk
 import numpy as np
+import keyboard
 
 
 if __name__ == '__main__':
@@ -24,9 +25,12 @@ if __name__ == '__main__':
     def tick():
         global t
         cview.delete(tk.ALL)
-        cview.create_rectangle(t, t, t + 100, t + 100, fill="Red")
+        cview.create_rectangle(t, 0, t + 100, 100, fill="Red")
         root.after(10, tick)
-        t += 1
+        if keyboard.is_pressed("d"):
+            t += 1
+        if keyboard.is_pressed("a"):
+            t -= 1
 
     tick()
 
