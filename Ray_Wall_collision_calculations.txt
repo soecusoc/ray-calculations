@@ -1,0 +1,57 @@
+Find whether the ray and the wall collides.
+
+# ray: from point (x,y) to infinity at the angle theta.
+/(x,y)+t(cos(theta),sin(theta)),  t>=0
+# wall: line segment between (x1,y1) and (x2,y2).
+\(1-s)(x1,y1)+s(x2,y2),           0<=s<=1
+
+(x+tcos(theta), y+tsin(theta))
+(x1-s(x1-x2), y1-s(y1-y2))
+
+/x+tcos(theta) = x1-s(x1-x2)
+\y+tsin(theta) = y1-s(y1-y2)
+
+/tcos(theta) + s(x1-x2) + x-x1 = 0
+\tsin(theta) + s(y1-y2) + y-y1 = 0
+
+# replacements:
+/ta + sb + c = 0
+\td + se + f = 0
+
+find t and s:
+/tad + sbd + cd = 0
+\tad + sae + af = 0
+
+sbd + cd - sae - af = 0
+s(bd - ae) + cd - af = 0
+s = (af - cd) / (db - ae),  if db - ae != 0
+
+ta + sb + c = 0
+t = (-sb -c) / a
+
+# if db - ae != 0
+/s = (af - cd) / (db - ae)
+\t = -(sb + c) / a
+are the coordinates.
+If t>=0 and 0<=s<=1, there is a collision.
+Otherwise: no collision.
+
+# What if db == ae?
+db - ae = sin(theta)(x1-x2) - cos(theta)(y1-y2) = 0
+=>
+Inner product:
+<(sin(theta),-cos(theta))|((x1-x2),(y1-y2))> = 0
+=>
+(sin(theta),-cos(theta)) and (x1-x2,y1-y2) are orthogonal.
+=>
+(sin(theta),cos(theta)) and (x1-x2,y1-y2) are parallel.
+=>
+No collision. No (s,t) pair can be found.
+
+Replacements:
+a = cos(theta)
+b = x1-x2
+c = x-x1
+d = sin(theta)
+e = y1-y2
+f = y-y1
