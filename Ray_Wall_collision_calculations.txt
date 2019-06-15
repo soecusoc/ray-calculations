@@ -27,16 +27,21 @@ s(bd - ae) + cd - af = 0
 s = (af - cd) / (db - ae),  if db - ae != 0
 
 ta + sb + c = 0
-t = (-sb -c) / a
+t = -(sb + c) / a
 
-# if db - ae != 0
+# 3 possibilities:
+# Either db - ae != 0 and a != 0,
+# Or db == ae,
+# Or a == 0.
+
+# if db - ae != 0 and a != 0:
 /s = (af - cd) / (db - ae)
 \t = -(sb + c) / a
 are the coordinates.
 If t>=0 and 0<=s<=1, there is a collision.
 Otherwise: no collision.
 
-# What if db == ae?
+# if db == ae:
 db - ae = sin(theta)(x1-x2) - cos(theta)(y1-y2) = 0
 =>
 Inner product:
@@ -47,6 +52,12 @@ Inner product:
 (sin(theta),cos(theta)) and (x1-x2,y1-y2) are parallel.
 =>
 No collision. No (s,t) pair can be found.
+
+# if a == 0:
+# then d != 0, since db != ae == 0.
+/     sb + c = 0
+\td + se + f = 0
+t = -(se + f) / d
 
 Replacements:
 a = cos(theta)
