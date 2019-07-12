@@ -16,6 +16,8 @@ class Camera:
         self.parent = parent
         self.fov = fov / 360
         self.__offset = offset
+        self.move = 0
+        self.collision_info = np.zeros(n_rays)
 
     # Offset is always in the range [0, 1].
     @property
@@ -78,14 +80,80 @@ class Camera:
             walls[idx] = self.parent.coords(wall_idx)
         for idx in self.parent.find_withtag("rays"):
             self.parent.delete(idx)
+
+        if self.move:
+            angle = 2 * np.pi * self.offset + (self.fov / 2) * 2 * np.pi + np.pi
+            self.x += self.move * np.cos(angle)
+            self.y += self.move * np.sin(angle)
+            self.move = 0
+
         for i, angle in enumerate(self.offset * 2 * np.pi + np.linspace(0, self.fov * 2 * np.pi, self.n_rays, endpoint=False)):
             distance, closet_coordinates = self.find_ray_walls_collision_coordinates(angle, walls)
+            self.collision_info[i] = distance
             # Closest_coordinates may be None (when the ray does not collide).
             # In that case, do not draw the ray (for now, maybe handle more elegantly later).
             try:
                 self.parent.create_line(self.x, self.y, closet_coordinates[0], closet_coordinates[1], tags="rays")
             except TypeError:
                 pass
+        self.parent.pack()
+
+
+class Pixel:
+    def __init__(self, parent, x, y, size):
+        self.parent = parent
+        self.x = x
+        self.y = y
+        self.size = size
+        self.__color = "#000000"
+        self.idx = self.parent.create_rectangle(
+            self.x, self.y, self.x + self.size, self.y + self.size, tag="pixel", width=0, fill=self.color
+        )
+
+    @property
+    def color(self):
+        return self.__color
+
+    @color.setter
+    def color(self, rgb_triplet):
+        # This property does not check for the numbers to be in range [0, 255].
+        # This is because the PixelMap handles 8-bit integers.
+        r = hex(rgb_triplet[0]).split('x')[-1].rjust(2, '0')
+        g = hex(rgb_triplet[1]).split('x')[-1].rjust(2, '0')
+        b = hex(rgb_triplet[2]).split('x')[-1].rjust(2, '0')
+        self.__color = "#{}{}{}".format(r, g, b)
+
+    def update(self):
+        self.parent.itemconfig(self.idx, fill=self.color)
+
+
+class PixelMap:
+    def __init__(self, parent, height, width, pixel_size):
+        self.parent = parent
+        self.height = height
+        self.width = width
+        self.pixel_size = pixel_size
+        self.map = np.zeros((self.height, self.width, 3), dtype=np.int8)
+        self.pixels = self.init_pixels()
+
+    def init_pixels(self):
+        pixels = [None] * self.height * self.width
+        for i in range(self.height):
+            for j in range(self.width):
+                pixel = Pixel(self.parent, j * self.pixel_size, i * self.pixel_size, self.pixel_size)
+                pixel.color = self.map[i, j]
+                pixel.update()
+                pixel_idx = int(i * self.width + j)
+                pixels[pixel_idx] = pixel
+        self.parent.pack()
+        return pixels
+
+    def update(self):
+        for i in range(self.height):
+            for j in range(self.width):
+                pixel_idx = int(i * self.width + j)
+                self.pixels[pixel_idx].color = self.map[i, j]
+                self.pixels[pixel_idx].update()
         self.parent.pack()
 
 
@@ -118,24 +186,38 @@ if __name__ == '__main__':
     frame_left.pack(side=tk.LEFT)
     frame_right = tk.Frame(frame_main)
     frame_right.pack(side=tk.RIGHT)
+
     cmap = tk.Canvas(frame_left, width=300, height=200)
     set_borders(cmap)
     set_random_walls(cmap, n_walls=5, seed=27)
-    camera = Camera(cmap, n_rays=64)
+    # 4 pixels * 75 rays = 300 pixels.
+    camera = Camera(cmap, n_rays=60)
     cmap.pack()
+
     cview = tk.Canvas(frame_right, width=300, height=200, bg="Green")
+    pixel_map = PixelMap(cview, height=40, width=60, pixel_size=5)
+    pixel_map.update()
     cview.pack()
 
+    max_dist = 300
     def tick():
         if keyboard.is_pressed("d"):
-            camera.offset += 0.01
+            camera.offset += 0.02
         if keyboard.is_pressed("s"):
-            pass
+            camera.move = 3
         if keyboard.is_pressed("a"):
-            camera.offset += -0.01
+            camera.offset += -0.02
         if keyboard.is_pressed("w"):
-            pass
+            camera.move = -3
         camera.update_rays()
+        pixel_map.map = np.dstack((np.ones((40, 60), dtype=np.int8), np.ones((40, 60), dtype=np.int8), 250 * np.ones((40, 60), dtype=np.int8)))
+        for i, dist in enumerate(camera.collision_info):
+            color = dist / max_dist
+            color = int(np.round(color * 255))
+            height = 40 - int(np.round(20 * color / 255))
+            idx_list = np.arange(40 - height, height)
+            pixel_map.map[idx_list, i, :] = (255 - color) * np.ones((len(idx_list), 3), dtype=np.int8)
+        pixel_map.update()
         root.after(10, tick)
 
     tick()
