@@ -6,7 +6,7 @@ import keyboard
 
 
 class Camera:
-    def __init__(self, parent, initial_x=None, initial_y=None, n_rays=36):
+    def __init__(self, parent, initial_x=None, initial_y=None, n_rays=36, fov=90, offset=0):
         if initial_x is None or initial_y is None:
             initial_x = int(int(parent.cget("width")) / 2)
             initial_y = int(int(parent.cget("height")) / 2)
@@ -14,6 +14,18 @@ class Camera:
         self.y = initial_y
         self.n_rays = n_rays
         self.parent = parent
+        self.fov = fov / 360
+        self.__offset = offset
+
+    # Offset is always in the range [0, 1].
+    @property
+    def offset(self):
+        return self.__offset
+
+    @offset.setter
+    def offset(self, off):
+        off_int = int(off)
+        self.__offset = off - off_int
 
     def find_ray_walls_collision_coordinates(self, theta, wall_coordinates):
         # The math heavy portion of the code.
@@ -21,8 +33,10 @@ class Camera:
 
         x = self.x
         y = self.y
-        a = np.cos(theta)
-        d = np.sin(theta)
+        # Eliminate numbers close to zero by rounding.
+        # Numbers close to zero raise precision problems.
+        a = np.round(np.cos(theta), 7)
+        d = np.round(np.sin(theta), 7)
 
         smallest_distance = np.inf
         closest_coordinates = None
@@ -64,14 +78,9 @@ class Camera:
             walls[idx] = self.parent.coords(wall_idx)
         for idx in self.parent.find_withtag("rays"):
             self.parent.delete(idx)
-        for i, angle in enumerate(np.linspace(0, 2 * np.pi, self.n_rays, endpoint=False)):
-            # TODO: Fix the bug from rays going straight up or down.  --Preferred action--
-            # TODO: OR use configurations, that do not create vertical rays
-            # TODO: (Values 2^k * n  with k >= 2 and n >= 1 for self.n_rays).
-            # Has something to do with angles 90 degrees and 270 degrees:
-            # In these cases, cos(theta) = 0.
+        for i, angle in enumerate(self.offset * 2 * np.pi + np.linspace(0, self.fov * 2 * np.pi, self.n_rays, endpoint=False)):
             distance, closet_coordinates = self.find_ray_walls_collision_coordinates(angle, walls)
-            # closest_coordinates may be None (when the ray does not collide).
+            # Closest_coordinates may be None (when the ray does not collide).
             # In that case, do not draw the ray (for now, maybe handle more elegantly later).
             try:
                 self.parent.create_line(self.x, self.y, closet_coordinates[0], closet_coordinates[1], tags="rays")
@@ -112,7 +121,6 @@ if __name__ == '__main__':
     cmap = tk.Canvas(frame_left, width=300, height=200)
     set_borders(cmap)
     set_random_walls(cmap, n_walls=5, seed=27)
-    # Values 2^k * n for n_rays with k >= 2 and n >= 1 cause a see-through-walls bug.
     camera = Camera(cmap, n_rays=64)
     cmap.pack()
     cview = tk.Canvas(frame_right, width=300, height=200, bg="Green")
@@ -120,13 +128,13 @@ if __name__ == '__main__':
 
     def tick():
         if keyboard.is_pressed("d"):
-            camera.x += 1
+            camera.offset += 0.01
         if keyboard.is_pressed("s"):
-            camera.y += 1
+            pass
         if keyboard.is_pressed("a"):
-            camera.x -= 1
+            camera.offset += -0.01
         if keyboard.is_pressed("w"):
-            camera.y -= 1
+            pass
         camera.update_rays()
         root.after(10, tick)
 
